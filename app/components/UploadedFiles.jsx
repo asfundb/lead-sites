@@ -98,6 +98,7 @@ const UploadedFilesList = () => {
         "Website",
         "Analysis",
         "Screenshot URL",
+        "PDF URL",
       ];
 
       const leadsData = leadsSnapshot.docs.map((doc) => {
@@ -110,6 +111,7 @@ const UploadedFilesList = () => {
           data["Website"] || "",
           data.analysis || "",
           data.screenshotURL || "",
+          data["pdfURL"] || "",
         ];
       });
 
@@ -353,112 +355,124 @@ const UploadedFilesList = () => {
 
   return (
     <div>
-      <h3 className="">Uploaded Files</h3>
-      <ul>
+      <h3 className="mt-20 text-2xl font-bold">Uploaded Files</h3>
+      <ul className="w-full">
         {uploadedFiles.map((file) => (
-          <li key={file.id}>
-            <button onClick={() => handleFileClick(file.id)}>
-              {file.fileName}
-            </button>
-            <button
-              onClick={() => handleProcessLeads(file.id)}
-              disabled={processing[file.id]}
-              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-            >
-              {processing[file.id] ? "Processing..." : "Process Leads"}
-            </button>
-            <button
-              onClick={() => handleExportLeads(file.id)}
-              className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Export CSV
-            </button>
-            <button
-              onClick={() => handleGeneratePDFs(file.id)}
-              className="ml-2 px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-            >
-              Generate PDFs
-            </button>
-            {expandedFile === file.id && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white shadow-sm rounded-lg overflow-hidden">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        First Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Website
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {leads.map((lead) => {
-                      return (
-                        <tr key={lead["Company"]} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead["Company"]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead["First Name"]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead["Last Name"]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead["Email"]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead["Website"]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <button
-                              onClick={() => handleDownloadScreenshot(lead)}
-                              className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
-                              disabled={!lead.screenshotURL}
-                            >
-                              Download Screenshot
-                            </button>
-                            <button
-                              onClick={() => handleAnalyzeScreenshot(lead)}
-                              className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
-                              disabled={!lead.screenshotURL}
-                            >
-                              Analyze Screenshot
-                            </button>
-                            <button
-                              onClick={() => handleDownloadAnalysis(lead)}
-                              className="px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-                              disabled={!lead.analysis}
-                            >
-                              Download Analysis
-                            </button>
-                            <button
-                              onClick={() => handleExportPDF(file.id, lead.id)}
-                              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            >
-                              Export PDF
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          <li key={file.id} className="w-full gap-10 flex justify-between my-3">
+            <div className="flex-col w-full">
+              <div className="flex justify-between">
+                <div onClick={() => handleFileClick(file.id)}>
+                  {file.fileName}
+                </div>
+                <div>
+                  <button
+                    onClick={() => handleProcessLeads(file.id)}
+                    disabled={processing[file.id]}
+                    className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+                  >
+                    {processing[file.id] ? "Processing..." : "Process Leads"}
+                  </button>
+
+                  <button
+                    onClick={() => handleGeneratePDFs(file.id)}
+                    className="ml-2 px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+                  >
+                    Generate PDFs
+                  </button>
+                  <button
+                    onClick={() => handleExportLeads(file.id)}
+                    className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Export CSV
+                  </button>
+                </div>
               </div>
-            )}
+              {expandedFile === file.id && (
+                <div className="overflow-x-auto mt-4 mb-20 border-2 border-gray-300 rounded-lg">
+                  <table className="max-w-full bg-white shadow-sm rounded-lg overflow-hidden">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase ">
+                          Company
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          First Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Last Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Website
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {leads.map((lead) => {
+                        return (
+                          <tr
+                            key={lead["Company"]}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {lead["Company"]}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {lead["First Name"]}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {lead["Last Name"]}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {lead["Email"]}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {lead["Website"]}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => handleDownloadScreenshot(lead)}
+                                className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
+                                disabled={!lead.screenshotURL}
+                              >
+                                Download Screenshot
+                              </button>
+                              <button
+                                onClick={() => handleAnalyzeScreenshot(lead)}
+                                className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
+                                disabled={!lead.screenshotURL}
+                              >
+                                Analyze Screenshot
+                              </button>
+                              <button
+                                onClick={() => handleDownloadAnalysis(lead)}
+                                className="px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+                                disabled={!lead.analysis}
+                              >
+                                Download Analysis
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleExportPDF(file.id, lead.id)
+                                }
+                                className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                              >
+                                Export PDF
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </li>
         ))}
       </ul>
