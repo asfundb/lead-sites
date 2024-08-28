@@ -73,7 +73,7 @@ export async function POST(request) {
           try {
             await page.goto(websiteUrl, {
               waitUntil: "networkidle0",
-              timeout: 60000, // Increase timeout to 60 seconds
+              timeout: 120000, // Increase timeout to 120 seconds
             });
 
             // Set viewport to a large size

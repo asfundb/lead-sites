@@ -102,6 +102,35 @@ const UploadedFilesList = () => {
     }
   };
 
+  const handleAnalyzeScreenshot = async (lead) => {
+    if (!lead.screenshotURL) {
+      alert("No screenshot available for this lead");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/analyze-screenshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          screenshotURL: lead.screenshotURL,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      alert(`Analysis: ${data.analysis}`);
+    } catch (error) {
+      console.error("Error analyzing screenshot:", error);
+      alert("Failed to analyze screenshot");
+    }
+  };
+
   const fetchLeadsForFile = async (fileId) => {
     const leadsCollection = collection(db, "uploadedFiles", fileId, "leads");
     const leadsSnapshot = await getDocs(leadsCollection);
@@ -176,10 +205,17 @@ const UploadedFilesList = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <button
                               onClick={() => handleDownloadScreenshot(lead)}
-                              className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                              className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
                               disabled={!lead.screenshotURL}
                             >
                               Download Screenshot
+                            </button>
+                            <button
+                              onClick={() => handleAnalyzeScreenshot(lead)}
+                              className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                              disabled={!lead.screenshotURL}
+                            >
+                              Analyze Screenshot
                             </button>
                           </td>
                         </tr>
