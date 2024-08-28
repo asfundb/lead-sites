@@ -32,7 +32,10 @@ Please provide insights on the following aspects:
 3. Overall design quality and user experience 
 5. Suggestions for improvement- go into detail on what is working and what is not working and why. Be heavy on improvements that are needed.
 
-Be concise but thorough in your analysis and provide a compelling argument for why this website is or is not a good fit for the client's needs.`;
+just remember, because you're analysing a screenshot, the menu maybe sticky and appears randomly in the screenshot, so don't assume they don't have a menu. 
+Be concise but thorough in your analysis and provide a compelling argument for why this website is or is not a good fit for the client's needs.
+regarding your tone, be professional and don't use words like maybe or sort of, just be direct and to the point. Don't give off like you're guessing.
+Don't mention that you're an ai, or that you're analysing a screenshot. pretend like you're a professional website auditor.`;
 
     const message = await anthropic.messages.create({
       model: "claude-3-opus-20240229",

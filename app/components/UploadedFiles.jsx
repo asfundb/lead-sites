@@ -1,7 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { collection, query, getDocs, orderBy } from "firebase/firestore";
+import {
+  collection,
+  query,
+  getDocs,
+  orderBy,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 
 const UploadedFilesList = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -124,11 +131,40 @@ const UploadedFilesList = () => {
       }
 
       const data = await response.json();
-      alert(`Analysis: ${data.analysis}`);
+
+      // Update Firebase with the analysis
+      const leadRef = doc(db, `uploadedFiles/${expandedFile}/leads`, lead.id);
+      await updateDoc(leadRef, { analysis: data.analysis });
+
+      // Update local state
+      setLeads(
+        leads.map((l) =>
+          l.id === lead.id ? { ...l, analysis: data.analysis } : l
+        )
+      );
+
+      alert("Analysis completed and saved successfully");
     } catch (error) {
       console.error("Error analyzing screenshot:", error);
       alert("Failed to analyze screenshot");
     }
+  };
+
+  const handleDownloadAnalysis = (lead) => {
+    if (!lead.analysis) {
+      alert("No analysis available for this lead");
+      return;
+    }
+
+    const blob = new Blob([lead.analysis], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analysis_${lead.id || lead["Company"]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const fetchLeadsForFile = async (fileId) => {
@@ -212,10 +248,17 @@ const UploadedFilesList = () => {
                             </button>
                             <button
                               onClick={() => handleAnalyzeScreenshot(lead)}
-                              className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                              className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
                               disabled={!lead.screenshotURL}
                             >
                               Analyze Screenshot
+                            </button>
+                            <button
+                              onClick={() => handleDownloadAnalysis(lead)}
+                              className="px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+                              disabled={!lead.analysis}
+                            >
+                              Download Analysis
                             </button>
                           </td>
                         </tr>
