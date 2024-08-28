@@ -4,6 +4,7 @@ import { getStorage, ref, uploadBytes } from "firebase/storage";
 import { db } from "../../firebase";
 import { collection, addDoc, writeBatch, doc } from "firebase/firestore";
 import Papa from "papaparse";
+import { v4 as uuidv4 } from "uuid";
 
 const LeadUpload = () => {
   const [file, setFile] = useState(null);
@@ -22,9 +23,14 @@ const LeadUpload = () => {
       Papa.parse(file, {
         header: true,
         complete: (results) => {
-          const processedData = results.data.filter((row) =>
-            Object.values(row).some((value) => value.trim() !== "")
-          );
+          const processedData = results.data
+            .filter((row) =>
+              Object.values(row).some((value) => value.trim() !== "")
+            )
+            .map((row) => ({
+              ...row,
+              leadId: uuidv4(), // Add a UUID for each lead
+            }));
           resolve(processedData);
         },
         error: (error) => {
@@ -71,7 +77,7 @@ const LeadUpload = () => {
       const leadsCollection = collection(uploadedFileRef, "leads");
 
       leads.forEach((lead) => {
-        const docRef = doc(leadsCollection);
+        const docRef = doc(leadsCollection, lead.leadId); // Use the leadId as the document ID
         const leadData = { ...lead };
         // Remove any empty fields
         Object.keys(leadData).forEach(

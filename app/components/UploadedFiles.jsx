@@ -7,6 +7,7 @@ const UploadedFilesList = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [expandedFile, setExpandedFile] = useState(null);
   const [leads, setLeads] = useState([]);
+  const [processing, setProcessing] = useState({});
 
   useEffect(() => {
     const fetchUploadedFiles = async () => {
@@ -31,18 +32,104 @@ const UploadedFilesList = () => {
       const leadsSnapshot = await getDocs(
         collection(db, `uploadedFiles/${fileId}/leads`)
       );
-      setLeads(leadsSnapshot.docs.map((doc) => doc.data()));
+      const leadsData = leadsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Fetched leads:", leadsData);
+      setLeads(leadsData);
     }
+  };
+
+  const handleProcessLeads = async (fileId) => {
+    setProcessing((prev) => ({ ...prev, [fileId]: true }));
+    try {
+      console.log(`Processing leads for file: ${fileId}`);
+      const response = await fetch("/api/create-snapshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileId }),
+      });
+
+      console.log(`Response status: ${response.status}`);
+      const responseText = await response.text();
+      console.log(`Response body: ${responseText}`);
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP error! status: ${response.status}, body: ${responseText}`
+        );
+      }
+
+      const data = JSON.parse(responseText);
+      alert(data.message);
+    } catch (error) {
+      console.error("Error processing leads:", error);
+      alert(`Failed to process leads: ${error.message}`);
+    } finally {
+      setProcessing((prev) => ({ ...prev, [fileId]: false }));
+    }
+  };
+
+  const handleDownloadScreenshot = async (leadId, fileId) => {
+    console.log("Attempting to download screenshot:", { leadId, fileId });
+    if (!leadId || !fileId) {
+      console.error("Invalid leadId or fileId", { leadId, fileId });
+      alert("Cannot download screenshot: Invalid lead or file ID");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/download-screenshot?leadId=${leadId}&fileId=${fileId}`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      console.log("Response:", response);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = `screenshot_${leadId}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading screenshot:", error);
+      alert("Failed to download screenshot");
+    }
+  };
+
+  const fetchLeadsForFile = async (fileId) => {
+    const leadsCollection = collection(db, "uploadedFiles", fileId, "leads");
+    const leadsSnapshot = await getDocs(leadsCollection);
+    const leadsData = leadsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      console.log("Fetched lead data:", { id: doc.id, ...data });
+      return { id: doc.id, ...data };
+    });
+    setLeads(leadsData);
   };
 
   return (
     <div>
-      <h3 class="">Uploaded Files</h3>
+      <h3 className="">Uploaded Files</h3>
       <ul>
         {uploadedFiles.map((file) => (
           <li key={file.id}>
             <button onClick={() => handleFileClick(file.id)}>
               {file.fileName}
+            </button>
+            <button
+              onClick={() => handleProcessLeads(file.id)}
+              disabled={processing[file.id]}
+              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+            >
+              {processing[file.id] ? "Processing..." : "Process Leads"}
             </button>
             {expandedFile === file.id && (
               <div className="overflow-x-auto">
@@ -64,28 +151,44 @@ const UploadedFilesList = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Website
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {leads.map((lead, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead["Company"]}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead["First Name"]}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead["Last Name"]}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead["Email"]}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead["Website"]}
-                        </td>
-                      </tr>
-                    ))}
+                    {leads.map((lead) => {
+                      return (
+                        <tr key={lead["Company"]} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead["Company"]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead["First Name"]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead["Last Name"]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead["Email"]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead["Website"]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button
+                              onClick={() =>
+                                handleDownloadScreenshot(lead.id, file.id)
+                              }
+                              className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                              disabled={!lead.screenshot}
+                            >
+                              Download Screenshot
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
