@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../firebase";
 import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import {
+  getStorage,
+  ref,
+  uploadString,
+  getDownloadURL,
+} from "firebase/storage";
 import puppeteer from "puppeteer";
+
+const storage = getStorage();
 
 export async function POST(request) {
   console.log("API route hit");
@@ -87,10 +95,25 @@ export async function POST(request) {
             console.log(
               `Screenshot created for ${websiteUrl}. Size: ${screenshot.length} characters`
             );
-            await updateDoc(doc(leadsCollection, leadDoc.id), {
-              screenshot: screenshot,
+
+            // Upload screenshot to Firebase Storage
+            const storageRef = ref(
+              storage,
+              `screenshots/${fileId}/${leadDoc.id}.png`
+            );
+            await uploadString(storageRef, screenshot, "base64", {
+              contentType: "image/png",
             });
-            console.log(`Lead ${leadDoc.id} updated with screenshot`);
+
+            // Get the download URL
+            const downloadURL = await getDownloadURL(storageRef);
+
+            // Update Firestore with the screenshot URL
+            await updateDoc(doc(leadsCollection, leadDoc.id), {
+              screenshotURL: downloadURL,
+            });
+
+            console.log(`Lead ${leadDoc.id} updated with screenshot URL`);
             updatedCount++;
           } catch (error) {
             console.error(`Error processing lead ${leadDoc.id}:`, error);

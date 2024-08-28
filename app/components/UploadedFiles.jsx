@@ -73,28 +73,26 @@ const UploadedFilesList = () => {
     }
   };
 
-  const handleDownloadScreenshot = async (leadId, fileId) => {
-    console.log("Attempting to download screenshot:", { leadId, fileId });
-    if (!leadId || !fileId) {
-      console.error("Invalid leadId or fileId", { leadId, fileId });
-      alert("Cannot download screenshot: Invalid lead or file ID");
+  const handleDownloadScreenshot = async (lead) => {
+    if (!lead.screenshotURL) {
+      console.error("No screenshot URL available for this lead");
+      alert("Screenshot not available for this lead");
       return;
     }
 
     try {
       const response = await fetch(
-        `/api/download-screenshot?leadId=${leadId}&fileId=${fileId}`
+        `/api/proxy-download?url=${encodeURIComponent(lead.screenshotURL)}`
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      console.log("Response:", response);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = url;
-      a.download = `screenshot_${leadId}.png`;
+      a.download = `screenshot_${lead.id || lead.leadId}.png`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -177,11 +175,9 @@ const UploadedFilesList = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <button
-                              onClick={() =>
-                                handleDownloadScreenshot(lead.id, file.id)
-                              }
+                              onClick={() => handleDownloadScreenshot(lead)}
                               className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                              disabled={!lead.screenshot}
+                              disabled={!lead.screenshotURL}
                             >
                               Download Screenshot
                             </button>
