@@ -8,8 +8,11 @@ import {
   orderBy,
   doc,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import Papa from "papaparse";
+import jsPDF from "jspdf";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const UploadedFilesList = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -129,6 +132,55 @@ const UploadedFilesList = () => {
     }
   };
 
+  const handleExportPDF = async (fileId, leadId) => {
+    try {
+      const leadDoc = await getDoc(
+        doc(db, "uploadedFiles", fileId, "leads", leadId)
+      );
+      if (!leadDoc.exists()) {
+        throw new Error("Lead not found");
+      }
+      const data = leadDoc.data();
+
+      const pdf = new jsPDF();
+      let yOffset = 10;
+
+      pdf.setFontSize(16);
+      pdf.text("Lead Analysis", 10, yOffset);
+      yOffset += 20;
+
+      pdf.setFontSize(12);
+      pdf.text(`Company: ${data["Company"] || "N/A"}`, 10, yOffset);
+      yOffset += 10;
+      pdf.text(
+        `Name: ${data["First Name"] || ""} ${data["Last Name"] || ""}`,
+        10,
+        yOffset
+      );
+      yOffset += 10;
+      pdf.text(`Email: ${data["Email"] || "N/A"}`, 10, yOffset);
+      yOffset += 10;
+      pdf.text(`Website: ${data["Website"] || "N/A"}`, 10, yOffset);
+      yOffset += 20;
+
+      pdf.setFontSize(14);
+      pdf.text("Analysis:", 10, yOffset);
+      yOffset += 10;
+
+      pdf.setFontSize(10);
+      const analysisLines = pdf.splitTextToSize(
+        data.analysis || "No analysis available",
+        180
+      );
+      pdf.text(analysisLines, 10, yOffset);
+
+      pdf.save(`analysis_${data["Company"] || leadId}.pdf`);
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      alert("Failed to export PDF");
+    }
+  };
+
   const handleDownloadScreenshot = async (lead) => {
     if (!lead.screenshotURL) {
       console.error("No screenshot URL available for this lead");
@@ -227,6 +279,78 @@ const UploadedFilesList = () => {
     setLeads(leadsData);
   };
 
+  const handleGeneratePDFs = async (fileId) => {
+    try {
+      const leadsCollection = collection(db, "uploadedFiles", fileId, "leads");
+      const leadsSnapshot = await getDocs(leadsCollection);
+      const storage = getStorage();
+
+      // Load the background image
+      const backgroundImg = await loadImage("/template-bg.png");
+
+      for (const leadDoc of leadsSnapshot.docs) {
+        const leadData = leadDoc.data();
+        if (leadData.analysis) {
+          const pdf = new jsPDF();
+
+          // Add background image
+          pdf.addImage(backgroundImg, "JPEG", 0, 0, 210, 297); // A4 size: 210x297mm
+
+          pdf.setFontSize(16);
+          pdf.setTextColor(0, 0, 0); // Ensure text is visible on the background
+          pdf.text("Lead Analysis", 20, 20);
+
+          pdf.setFontSize(12);
+          pdf.text(`Company: ${leadData["Company"] || "N/A"}`, 20, 40);
+          pdf.text(
+            `Name: ${leadData["First Name"] || ""} ${
+              leadData["Last Name"] || ""
+            }`,
+            20,
+            50
+          );
+          pdf.text(`Email: ${leadData["Email"] || "N/A"}`, 20, 60);
+          pdf.text(`Website: ${leadData["Website"] || "N/A"}`, 20, 70);
+
+          pdf.setFontSize(14);
+          pdf.text("Analysis:", 20, 90);
+
+          pdf.setFontSize(10);
+          const analysisLines = pdf.splitTextToSize(leadData.analysis, 170);
+          pdf.text(analysisLines, 20, 100);
+
+          const pdfBlob = pdf.output("blob");
+          const pdfRef = ref(storage, `pdfs/${fileId}/${leadDoc.id}.pdf`);
+          await uploadBytes(pdfRef, pdfBlob);
+
+          const pdfURL = await getDownloadURL(pdfRef);
+
+          await updateDoc(
+            doc(db, "uploadedFiles", fileId, "leads", leadDoc.id),
+            {
+              pdfURL: pdfURL,
+            }
+          );
+        }
+      }
+
+      alert("PDFs generated and uploaded successfully!");
+    } catch (error) {
+      console.error("Error generating PDFs:", error);
+      alert("Failed to generate PDFs");
+    }
+  };
+
+  // Helper function to load image
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
   return (
     <div>
       <h3 className="">Uploaded Files</h3>
@@ -247,7 +371,13 @@ const UploadedFilesList = () => {
               onClick={() => handleExportLeads(file.id)}
               className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
             >
-              Export Leads
+              Export CSV
+            </button>
+            <button
+              onClick={() => handleGeneratePDFs(file.id)}
+              className="ml-2 px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+            >
+              Generate PDFs
             </button>
             {expandedFile === file.id && (
               <div className="overflow-x-auto">
@@ -314,6 +444,12 @@ const UploadedFilesList = () => {
                               disabled={!lead.analysis}
                             >
                               Download Analysis
+                            </button>
+                            <button
+                              onClick={() => handleExportPDF(file.id, lead.id)}
+                              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                              Export PDF
                             </button>
                           </td>
                         </tr>
