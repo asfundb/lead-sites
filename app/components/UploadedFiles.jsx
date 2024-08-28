@@ -9,12 +9,14 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
+import Papa from "papaparse";
 
 const UploadedFilesList = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [expandedFile, setExpandedFile] = useState(null);
   const [leads, setLeads] = useState([]);
   const [processing, setProcessing] = useState({});
+  const [csvData, setCsvData] = useState([]);
 
   useEffect(() => {
     const fetchUploadedFiles = async () => {
@@ -77,6 +79,53 @@ const UploadedFilesList = () => {
       alert(`Failed to process leads: ${error.message}`);
     } finally {
       setProcessing((prev) => ({ ...prev, [fileId]: false }));
+    }
+  };
+
+  const handleExportLeads = async (fileId) => {
+    try {
+      const leadsCollection = collection(db, "uploadedFiles", fileId, "leads");
+      const leadsSnapshot = await getDocs(leadsCollection);
+
+      const headers = [
+        "Company",
+        "First Name",
+        "Last Name",
+        "Email",
+        "Website",
+        "Analysis",
+        "Screenshot URL",
+      ];
+
+      const leadsData = leadsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return [
+          data["Company"] || "",
+          data["First Name"] || "",
+          data["Last Name"] || "",
+          data["Email"] || "",
+          data["Website"] || "",
+          data.analysis || "",
+          data.screenshotURL || "",
+        ];
+      });
+
+      const csvData = Papa.unparse({
+        fields: headers,
+        data: leadsData,
+      });
+
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `leads_${fileId}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error exporting leads:", error);
+      alert("Failed to export leads");
     }
   };
 
@@ -193,6 +242,12 @@ const UploadedFilesList = () => {
               className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
             >
               {processing[file.id] ? "Processing..." : "Process Leads"}
+            </button>
+            <button
+              onClick={() => handleExportLeads(file.id)}
+              className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Export Leads
             </button>
             {expandedFile === file.id && (
               <div className="overflow-x-auto">

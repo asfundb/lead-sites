@@ -15,9 +15,11 @@
     --background-end-rgb: 0, 0, 0;
   }
 }
+body {
+  background-color: red !important;
+}
 
 body {
-  color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
       transparent,
